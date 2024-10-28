@@ -216,393 +216,6 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
 end ---@diagnostic disable-next-line: undefined-field
 vim.opt.rtp:prepend(lazypath)
 
-function OpenSideBySideDiffFloat(left_content, right_content)
-  -- Define dimensions and positions
-  local width = math.floor(vim.o.columns * 0.4) -- 40% of the editor width
-  local height = math.floor(vim.o.lines * 0.6) -- 60% of the editor height
-  local row = math.floor((vim.o.lines - height) / 2)
-  local left_col = math.floor((vim.o.columns - 2 * width) / 3)
-  local right_col = left_col + width + 1
-
-  -- Create left buffer and set content
-  local left_buf = vim.api.nvim_create_buf(false, true) -- scratch buffer
-  vim.api.nvim_buf_set_lines(left_buf, 0, -1, false, left_content)
-
-  -- Create right buffer and set content
-  local right_buf = vim.api.nvim_create_buf(false, true) -- scratch buffer
-  vim.api.nvim_buf_set_lines(right_buf, 0, -1, false, right_content)
-
-  -- Define window options for both floating windows
-  local opts_left = {
-    style = 'minimal',
-    relative = 'editor',
-    width = width,
-    height = height,
-    row = row,
-    col = left_col,
-    border = 'rounded',
-  }
-
-  local opts_right = {
-    style = 'minimal',
-    relative = 'editor',
-    width = width,
-    height = height,
-    row = row,
-    col = right_col,
-    border = 'rounded',
-  }
-
-  -- Open floating windows
-  vim.api.nvim_open_win(left_buf, true, opts_left)
-  vim.api.nvim_open_win(right_buf, true, opts_right)
-
-  -- Optional: Enable `diff` mode to highlight differences
-  vim.api.nvim_buf_set_option(left_buf, 'modifiable', false)
-  vim.api.nvim_buf_set_option(right_buf, 'modifiable', false)
-  vim.api.nvim_buf_set_option(left_buf, 'diff', true)
-  vim.api.nvim_buf_set_option(right_buf, 'diff', true)
-end
-
-local function open_diff_view_old(buf1, buf2)
-  -- Get the current Neovim window dimensions
-  local ui = vim.api.nvim_list_uis()[1]
-  local width = ui.width
-  local height = ui.height
-
-  -- Calculate dimensions for the diff windows
-  local total_win_width = math.floor(width * 0.8)
-  local total_win_height = math.floor(height * 0.6)
-  local chat_win_height = 3 -- Adjusted height for the chat window
-
-  local win_col = math.floor((width - total_win_width) / 2)
-  local win_row = math.floor((height - total_win_height - chat_win_height) / 2)
-
-  -- Dimensions for each diff window
-  local diff_win_width = math.floor(total_win_width / 2)
-  local diff_win_height = total_win_height
-
-  -- Create the first diff window
-  local win_opts1 = {
-    relative = 'editor',
-    width = diff_win_width,
-    height = diff_win_height,
-    col = win_col,
-    row = win_row,
-    style = 'minimal',
-    border = 'single',
-  }
-
-  local win1 = vim.api.nvim_open_win(buf1, true, win_opts1)
-  vim.api.nvim_set_option_value('diff', true, { scope = 'local', win = win1 })
-  -- Set 'fillchars' to hide filler lines in win1
-  vim.api.nvim_set_option_value('fillchars', 'diff: ', { scope = 'local', win = win1 })
-
-  -- Create the second diff window
-  local win_opts2 = {
-    relative = 'editor',
-    width = diff_win_width,
-    height = diff_win_height,
-    col = win_col + diff_win_width,
-    row = win_row,
-    style = 'minimal',
-    border = 'single',
-  }
-
-  local win2 = vim.api.nvim_open_win(buf2, false, win_opts2)
-  vim.api.nvim_set_option_value('diff', true, { scope = 'local', win = win2 })
-  -- Set 'fillchars' to hide filler lines in win2
-  vim.api.nvim_set_option_value('fillchars', 'diff: ', { scope = 'local', win = win2 })
-
-  -- Apply ':diffthis' only to the diff windows
-  vim.api.nvim_set_current_win(win1)
-  vim.cmd 'diffthis'
-  vim.api.nvim_set_current_win(win2)
-  vim.cmd 'diffthis'
-
-  -- Create the chat interface window below the diff windows
-  local chat_buf = vim.api.nvim_create_buf(false, true)
-  local chat_win_opts = {
-    relative = 'editor',
-    width = total_win_width,
-    height = chat_win_height,
-    col = win_col,
-    row = win_row + diff_win_height,
-    style = 'minimal',
-    border = 'single',
-  }
-
-  local chat_win = vim.api.nvim_open_win(chat_buf, false, chat_win_opts)
-  -- Set buffer options to prevent save prompts
-  vim.api.nvim_buf_set_option(chat_buf, 'buftype', 'prompt')
-  vim.api.nvim_buf_set_option(chat_buf, 'bufhidden', 'wipe')
-  vim.api.nvim_buf_set_option(chat_buf, 'buflisted', false)
-  vim.fn.prompt_setprompt(chat_buf, '> ')
-
-  -- Ensure the chat window is not in diff mode
-  vim.api.nvim_set_option_value('diff', false, { scope = 'local', win = chat_win })
-  -- Set 'fillchars' to hide any filler lines in the chat window
-  vim.api.nvim_set_option_value('fillchars', 'diff: ', { scope = 'local', win = chat_win })
-
-  -- Enter insert mode in the chat window
-  vim.api.nvim_set_current_win(chat_win)
-  vim.cmd 'startinsert!'
-
-  -- Return handles to the created windows and buffers if needed
-  return {
-    win1 = win1,
-    win2 = win2,
-    chat_win = chat_win,
-    chat_buf = chat_buf,
-  }
-end
-
-local function open_diff_view_o2(buf1, buf2)
-  -- Get the current Neovim window dimensions
-  local ui = vim.api.nvim_list_uis()[1]
-  local width = ui.width
-  local height = ui.height
-
-  -- Calculate dimensions for the diff windows
-  local total_win_width = math.floor(width * 0.8)
-  local total_win_height = math.floor(height * 0.6)
-  local chat_win_height = 3 -- Adjusted height for the chat window
-
-  local win_col = math.floor((width - total_win_width) / 2)
-  local win_row = math.floor((height - total_win_height - chat_win_height) / 2)
-
-  -- Dimensions for each diff window
-  local diff_win_width = math.floor(total_win_width / 2)
-  local diff_win_height = total_win_height
-
-  -- Create the first diff window
-  local win_opts1 = {
-    relative = 'editor',
-    width = diff_win_width,
-    height = diff_win_height,
-    col = win_col,
-    row = win_row,
-    style = 'minimal',
-    border = 'single',
-  }
-
-  local win1 = vim.api.nvim_open_win(buf1, true, win_opts1)
-  vim.api.nvim_set_option_value('diff', true, { scope = 'local', win = win1 })
-  -- Set 'fillchars' to hide filler lines and tildes in win1
-  vim.api.nvim_set_option_value('fillchars', 'diff: ,eob: ', { scope = 'local', win = win1 })
-
-  -- Create the second diff window
-  local win_opts2 = {
-    relative = 'editor',
-    width = diff_win_width,
-    height = diff_win_height,
-    col = win_col + diff_win_width,
-    row = win_row,
-    style = 'minimal',
-    border = 'single',
-  }
-
-  local win2 = vim.api.nvim_open_win(buf2, false, win_opts2)
-  vim.api.nvim_set_option_value('diff', true, { scope = 'local', win = win2 })
-  -- Set 'fillchars' to hide filler lines and tildes in win2
-  vim.api.nvim_set_option_value('fillchars', 'diff: ,eob: ', { scope = 'local', win = win2 })
-
-  -- Apply ':diffthis' only to the diff windows
-  vim.api.nvim_set_current_win(win1)
-  vim.cmd 'diffthis'
-  vim.api.nvim_set_current_win(win2)
-  vim.cmd 'diffthis'
-
-  -- Create the chat interface window below the diff windows
-  local chat_buf = vim.api.nvim_create_buf(false, true)
-  local chat_win_opts = {
-    relative = 'editor',
-    width = total_win_width,
-    height = chat_win_height,
-    col = win_col,
-    row = win_row + diff_win_height,
-    style = 'minimal',
-    border = 'single',
-  }
-
-  local chat_win = vim.api.nvim_open_win(chat_buf, false, chat_win_opts)
-  -- Set buffer options to prevent save prompts
-  vim.api.nvim_buf_set_option(chat_buf, 'buftype', 'prompt')
-  vim.api.nvim_buf_set_option(chat_buf, 'bufhidden', 'wipe')
-  vim.api.nvim_buf_set_option(chat_buf, 'buflisted', false)
-  vim.fn.prompt_setprompt(chat_buf, '> ')
-
-  -- Ensure the chat window is not in diff mode
-  vim.api.nvim_set_option_value('diff', false, { scope = 'local', win = chat_win })
-  -- Set 'fillchars' to hide tildes in the chat window
-  vim.api.nvim_set_option_value('fillchars', 'eob: ', { scope = 'local', win = chat_win })
-
-  -- Enter insert mode in the chat window
-  vim.api.nvim_set_current_win(chat_win)
-  vim.cmd 'startinsert!'
-
-  -- Function to close all windows
-  local function close_all()
-    -- Exit diff mode
-    vim.api.nvim_set_current_win(win1)
-    vim.cmd 'diffoff'
-    vim.api.nvim_set_current_win(win2)
-    vim.cmd 'diffoff'
-    -- Close windows
-    vim.api.nvim_win_close(win1, true)
-    vim.api.nvim_win_close(win2, true)
-    vim.api.nvim_win_close(chat_win, true)
-  end
-
-  -- Map <ESC> in each buffer to close all windows
-  local opts = { noremap = true, silent = true, nowait = true }
-
-  -- Mapping for buffer 1
-  vim.api.nvim_buf_set_keymap(buf1, 'n', '<ESC>', ':lua close_all()<CR>', opts)
-
-  -- Mapping for buffer 2
-  vim.api.nvim_buf_set_keymap(buf2, 'n', '<ESC>', ':lua close_all()<CR>', opts)
-
-  -- Mapping for chat buffer (insert mode and normal mode)
-  vim.api.nvim_buf_set_keymap(chat_buf, 'i', '<ESC>', '<ESC>:lua close_all()<CR>', opts)
-  vim.api.nvim_buf_set_keymap(chat_buf, 'n', '<ESC>', ':lua close_all()<CR>', opts)
-
-  -- Return handles to the created windows and buffers if needed
-  return {
-    win1 = win1,
-    win2 = win2,
-    chat_win = chat_win,
-    chat_buf = chat_buf,
-  }
-end
-
--- Global function to close all windows
-function _G.close_all_windows(win1, win2, chat_win)
-  -- Exit diff mode and close windows safely
-  if vim.api.nvim_win_is_valid(win1) then
-    vim.api.nvim_set_current_win(win1)
-    vim.cmd 'diffoff'
-    vim.api.nvim_win_close(win1, true)
-  end
-  if vim.api.nvim_win_is_valid(win2) then
-    vim.api.nvim_set_current_win(win2)
-    vim.cmd 'diffoff'
-    vim.api.nvim_win_close(win2, true)
-  end
-  if vim.api.nvim_win_is_valid(chat_win) then
-    vim.api.nvim_win_close(chat_win, true)
-  end
-end
-
--- Function to open two buffers in a diff view with a chat interface below
-function open_diff_view(buf1, buf2)
-  -- Get the current Neovim window dimensions
-  local ui = vim.api.nvim_list_uis()[1]
-  local width = ui.width
-  local height = ui.height
-
-  -- Calculate dimensions for the diff windows
-  local total_win_width = math.floor(width * 0.8)
-  local total_win_height = math.floor(height * 0.6)
-  local chat_win_height = 3 -- Adjusted height for the chat window
-
-  local win_col = math.floor((width - total_win_width) / 2)
-  local win_row = math.floor((height - total_win_height - chat_win_height) / 2)
-
-  -- Dimensions for each diff window
-  local diff_win_width = math.floor(total_win_width / 2)
-  local diff_win_height = total_win_height
-
-  -- Create the first diff window
-  local win_opts1 = {
-    relative = 'editor',
-    width = diff_win_width,
-    height = diff_win_height,
-    col = win_col,
-    row = win_row,
-    style = 'minimal',
-    border = 'single',
-  }
-
-  local win1 = vim.api.nvim_open_win(buf1, true, win_opts1)
-  vim.api.nvim_set_option_value('diff', true, { scope = 'local', win = win1 })
-  -- Set 'fillchars' to hide filler lines and tildes in win1
-  vim.api.nvim_set_option_value('fillchars', 'diff: ,eob: ', { scope = 'local', win = win1 })
-
-  -- Create the second diff window
-  local win_opts2 = {
-    relative = 'editor',
-    width = diff_win_width,
-    height = diff_win_height,
-    col = win_col + diff_win_width,
-    row = win_row,
-    style = 'minimal',
-    border = 'single',
-  }
-
-  local win2 = vim.api.nvim_open_win(buf2, false, win_opts2)
-  vim.api.nvim_set_option_value('diff', true, { scope = 'local', win = win2 })
-  -- Set 'fillchars' to hide filler lines and tildes in win2
-  vim.api.nvim_set_option_value('fillchars', 'diff: ,eob: ', { scope = 'local', win = win2 })
-
-  -- Apply ':diffthis' only to the diff windows
-  vim.api.nvim_set_current_win(win1)
-  vim.cmd 'diffthis'
-  vim.api.nvim_set_current_win(win2)
-  vim.cmd 'diffthis'
-
-  -- Create the chat interface window below the diff windows
-  local chat_buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_option(chat_buf, 'buftype', 'prompt')
-  vim.api.nvim_buf_set_option(chat_buf, 'bufhidden', 'wipe')
-  vim.api.nvim_buf_set_option(chat_buf, 'buflisted', false)
-  vim.fn.prompt_setprompt(chat_buf, '> ')
-
-  local chat_win_opts = {
-    relative = 'editor',
-    width = total_win_width,
-    height = chat_win_height,
-    col = win_col,
-    row = win_row + diff_win_height,
-    style = 'minimal',
-    border = 'single',
-  }
-
-  local chat_win = vim.api.nvim_open_win(chat_buf, false, chat_win_opts)
-  -- Ensure the chat window is not in diff mode
-  vim.api.nvim_set_option_value('diff', false, { scope = 'local', win = chat_win })
-  -- Set 'fillchars' to hide tildes in the chat window
-  vim.api.nvim_set_option_value('fillchars', 'eob: ', { scope = 'local', win = chat_win })
-
-  -- Enter insert mode in the chat window
-  vim.api.nvim_set_current_win(chat_win)
-  vim.cmd 'startinsert!'
-
-  -- Map <ESC> in each buffer to close all windows
-  local opts = { noremap = true, silent = true, nowait = true }
-
-  -- Construct the command string with window IDs
-  local close_cmd = string.format(':lua close_all_windows(%d, %d, %d)<CR>', win1, win2, chat_win)
-
-  -- Mapping for buffer 1
-  vim.api.nvim_buf_set_keymap(buf1, 'n', '<ESC>', close_cmd, opts)
-
-  -- Mapping for buffer 2
-  vim.api.nvim_buf_set_keymap(buf2, 'n', '<ESC>', close_cmd, opts)
-
-  -- Mapping for chat buffer (insert mode and normal mode)
-  vim.api.nvim_buf_set_keymap(chat_buf, 'i', '<ESC><ESC>' .. close_cmd, opts)
-  vim.api.nvim_buf_set_keymap(chat_buf, 'n', '<ESC>' .. close_cmd, opts)
-
-  -- Return handles to the created windows and buffers if needed
-  return {
-    win1 = win1,
-    win2 = win2,
-    chat_win = chat_win,
-    chat_buf = chat_buf,
-  }
-end
-
 -- [[ Configure and install plugins ]]
 --
 --  To check the current status of your plugins, run
@@ -635,6 +248,44 @@ require('lazy').setup({
       'nvim-lua/plenary.nvim',
       'nvim-tree/nvim-web-devicons', -- not strictly required, but recommended
       'MunifTanjim/nui.nvim',
+    },
+  },
+
+  {
+    'folke/trouble.nvim',
+    opts = {}, -- for default options, refer to the configuration section for custom setup.
+    cmd = 'Trouble',
+    keys = {
+      {
+        '<leader>xx',
+        '<cmd>Trouble diagnostics toggle<cr>',
+        desc = 'Diagnostics (Trouble)',
+      },
+      {
+        '<leader>xX',
+        '<cmd>Trouble diagnostics toggle filter.buf=0<cr>',
+        desc = 'Buffer Diagnostics (Trouble)',
+      },
+      {
+        '<leader>cs',
+        '<cmd>Trouble symbols toggle focus=false<cr>',
+        desc = 'Symbols (Trouble)',
+      },
+      {
+        '<leader>cl',
+        '<cmd>Trouble lsp toggle focus=false win.position=right<cr>',
+        desc = 'LSP Definitions / references / ... (Trouble)',
+      },
+      {
+        '<leader>xL',
+        '<cmd>Trouble loclist toggle<cr>',
+        desc = 'Location List (Trouble)',
+      },
+      {
+        '<leader>xQ',
+        '<cmd>Trouble qflist toggle<cr>',
+        desc = 'Quickfix List (Trouble)',
+      },
     },
   },
 
@@ -901,26 +552,19 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>ts', function()
         neotest.summary.toggle()
       end, { desc = '[T]est Toggle [S]ummary' })
-
-      -- Testing out popup windows
-      vim.keymap.set('n', '<leader>po', function()
-        --OpenSideBySideDiffFloat({ 'line 1', 'line 2', 'line 3' }, { 'line 1', 'line 2 modified', 'line 3' })
-        -- Create sample buffers for demonstration
-        local buf1 = vim.api.nvim_create_buf(false, true)
-        vim.api.nvim_buf_set_lines(buf1, 0, -1, false, { 'Line 1', 'Line 2', 'Line 3' })
-
-        local buf2 = vim.api.nvim_create_buf(false, true)
-        vim.api.nvim_buf_set_lines(buf2, 0, -1, false, { 'Line 1', 'Line 2 modified', 'Line 3' })
-
-        -- Open the diff view with the chat interface
-        open_diff_view(buf1, buf2)
-      end, { desc = '[P]opup [O]pen' })
     end,
   },
 
   {
     'nvim-telescope/telescope-file-browser.nvim',
     dependencies = { 'nvim-telescope/telescope.nvim', 'nvim-lua/plenary.nvim' },
+    config = function()
+      require('telescope').load_extension 'file_browser'
+
+      vim.keymap.set('n', '<leader>ff', function()
+        require('telescope').extensions.file_browser.file_browser()
+      end, { desc = '[F]ile [F]inder' })
+    end,
   },
 
   -- LSP Plugins
