@@ -237,6 +237,9 @@ require('lazy').setup({
   -- Setup fugitive git handling
   'tpope/vim-fugitive',
 
+  -- Rhubarb is extension that enables GBrowse from Fugitive
+  'tpope/vim-rhubarb',
+
   -- Unimpaired bindings for quickfix lists, etc.
   'tpope/vim-unimpaired',
 
@@ -351,22 +354,37 @@ require('lazy').setup({
     end,
   },
 
-  -- Setup test runner
-  -- {
-  --   'vim-test/vim-test',
-  --   event = 'VimEnter',
-  --   dependencies = {
-  --     'tpope/vim-dispatch',
-  --   },
-  --   config = function()
-  --     -- Refer to potential strategies here: https://github.com/vim-test/vim-test
-  --     vim.g['test#strategy'] = 'dispatch_background'
-  --
-  --     -- Define runners to load. Only load golang
-  --     vim.g['test#enabled_runners'] = { 'go#gotest' }
-  --     vim.g['test#go#runner'] = 'gotest'
-  --   end,
-  -- },
+  {
+    'pwntester/octo.nvim',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+      'nvim-telescope/telescope.nvim',
+      'nvim-tree/nvim-web-devicons',
+    },
+    config = function()
+      require('octo').setup {
+        mappings_disable_default = true,
+      }
+    end,
+  },
+
+  {
+    'f-person/git-blame.nvim',
+    -- load the plugin at startup
+    event = 'VeryLazy',
+    -- Because of the keys part, you will be lazy loading this plugin.
+    -- The plugin wil only load once one of the keys is used.
+    -- If you want to load the plugin at startup, add something like event = "VeryLazy",
+    -- or lazy = false. One of both options will work.
+    opts = {
+      -- your configuration comes here
+      -- for example
+      enabled = true, -- if you want to enable the plugin
+      message_template = ' <summary> • <date> • <author> • <<sha>>', -- template for the blame message, check the Message template section for more options
+      date_format = '%m-%d-%Y %H:%M:%S', -- template for the date, check Date format section for more options
+      virtual_text_column = 1, -- virtual text start column, check Start virtual text at column section for more options
+    },
+  },
 
   {
     'nvim-neotest/neotest',
