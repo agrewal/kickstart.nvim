@@ -157,6 +157,9 @@ vim.opt.cursorline = true
 -- Minimal number of screen lines to keep above and below the cursor.
 vim.opt.scrolloff = 10
 
+-- Needed by bufferline
+vim.opt.termguicolors = true
+
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
@@ -249,6 +252,36 @@ require('lazy').setup({
       'nvim-tree/nvim-web-devicons', -- not strictly required, but recommended
       'MunifTanjim/nui.nvim',
     },
+    config = function()
+      require('neo-tree').setup {
+        sources = {
+          'filesystem',
+          'buffers',
+          'git_status',
+          'document_symbols',
+        },
+        mappings = {
+          ['P'] = { 'toggle_preview' },
+        },
+        source_selector = {
+          winbar = true,
+          statusline = false,
+          sources = {
+            { source = 'filesystem' },
+            { source = 'buffers' },
+            { source = 'git_status' },
+            { source = 'document_symbols' },
+          },
+        },
+      }
+
+      -- Keybinds
+      vim.keymap.set('n', '<leader>ef', '<cmd>Neotree<CR>', { desc = 'NeoTree [E]xplore [F]iles' })
+      vim.keymap.set('n', '<leader>eg', '<cmd>Neotree git_status<CR>', { desc = 'NeoTree [E]xplore [G]it Status' })
+      vim.keymap.set('n', '<leader>eb', '<cmd>Neotree buffers<CR>', { desc = 'NeoTree [E]xplore [B]uffers' })
+      vim.keymap.set('n', '<leader>es', '<cmd>Neotree doument_symbols<CR>', { desc = 'NeoTree [E]xplore Document [S]ymbols' })
+      vim.keymap.set('n', '<leader>er', '<cmd>Neotree reveal<CR>', { desc = 'NeoTree [E]xplore Document [S]ymbols' })
+    end,
   },
 
   {
@@ -287,6 +320,35 @@ require('lazy').setup({
         desc = 'Quickfix List (Trouble)',
       },
     },
+  },
+
+  {
+    'akinsho/bufferline.nvim',
+    version = '*',
+    dependencies = 'nvim-tree/nvim-web-devicons',
+    config = function()
+      require('bufferline').setup {
+        options = {
+          offsets = {
+            {
+              filetype = 'neo-tree',
+              text = 'Explorer',
+              highlight = 'Directory',
+              text_align = 'center',
+            },
+          },
+          diagnostics = 'nvim_lsp',
+          diagnostics_indicator = function(count, level, diagnostics_dict, context)
+            local s = ' '
+            for e, n in pairs(diagnostics_dict) do
+              local sym = e == 'error' and ' ' or (e == 'warning' and ' ' or ' ')
+              s = s .. n .. sym
+            end
+            return s
+          end,
+        },
+      }
+    end,
   },
 
   -- Setup test runner
@@ -409,6 +471,7 @@ require('lazy').setup({
       spec = {
         { '<leader>c', group = '[C]ode', mode = { 'n', 'x' } },
         { '<leader>d', group = '[D]ocument' },
+        { '<leader>e', group = '[E]xplore' },
         { '<leader>r', group = '[R]ename' },
         { '<leader>s', group = '[S]earch' },
         { '<leader>g', group = '[G]it' },
