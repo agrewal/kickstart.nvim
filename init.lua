@@ -257,6 +257,7 @@ require('lazy').setup({
     },
     config = function()
       require('neo-tree').setup {
+        close_if_last_window = true,
         sources = {
           'filesystem',
           'buffers',
@@ -614,7 +615,7 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>gc', builtin.git_commits, { desc = '[G]it [C]ommits' })
       vim.keymap.set('n', '<leader>gb', builtin.git_branches, { desc = '[G]it [B]ranches' })
       vim.keymap.set('n', '<leader>gs', builtin.git_status, { desc = '[G]it [S]tatus' })
-      vim.keymap.set('n', '<leader>gl', builtin.git_bcommits, { desc = '[G]it [L]ine history' })
+      vim.keymap.set('n', '<leader>gl', builtin.git_bcommits, { desc = '[G]it File [H]istory' })
 
       -- Configure keymap to run tests
       local neotest = require 'neotest'
