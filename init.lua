@@ -1,89 +1,3 @@
---[[
-
-=====================================================================
-==================== READ THIS BEFORE CONTINUING ====================
-=====================================================================
-========                                    .-----.          ========
-========         .----------------------.   | === |          ========
-========         |.-""""""""""""""""""-.|   |-----|          ========
-========         ||                    ||   | === |          ========
-========         ||   KICKSTART.NVIM   ||   |-----|          ========
-========         ||                    ||   | === |          ========
-========         ||                    ||   |-----|          ========
-========         ||:Tutor              ||   |:::::|          ========
-========         |'-..................-'|   |____o|          ========
-========         `"")----------------(""`   ___________      ========
-========        /::::::::::|  |::::::::::\  \ no mouse \     ========
-========       /:::========|  |==hjkl==:::\  \ required \    ========
-========      '""""""""""""'  '""""""""""""'  '""""""""""'   ========
-========                                                     ========
-=====================================================================
-=====================================================================
-
-What is Kickstart?
-
-  Kickstart.nvim is *not* a distribution.
-
-  Kickstart.nvim is a starting point for your own configuration.
-    The goal is that you can read every line of code, top-to-bottom, understand
-    what your configuration is doing, and modify it to suit your needs.
-
-    Once you've done that, you can start exploring, configuring and tinkering to
-    make Neovim your own! That might mean leaving Kickstart just the way it is for a while
-    or immediately breaking it into modular pieces. It's up to you!
-
-    If you don't know anything about Lua, I recommend taking some time to read through
-    a guide. One possible example which will only take 10-15 minutes:
-      - https://learnxinyminutes.com/docs/lua/
-
-    After understanding a bit more about Lua, you can use `:help lua-guide` as a
-    reference for how Neovim integrates Lua.
-    - :help lua-guide
-    - (or HTML version): https://neovim.io/doc/user/lua-guide.html
-
-Kickstart Guide:
-
-  TODO: The very first thing you should do is to run the command `:Tutor` in Neovim.
-
-    If you don't know what this means, type the following:
-      - <escape key>
-      - :
-      - Tutor
-      - <enter key>
-
-    (If you already know the Neovim basics, you can skip this step.)
-
-  Once you've completed that, you can continue working through **AND READING** the rest
-  of the kickstart init.lua.
-
-  Next, run AND READ `:help`.
-    This will open up a help window with some basic information
-    about reading, navigating and searching the builtin help documentation.
-
-    This should be the first place you go to look when you're stuck or confused
-    with something. It's one of my favorite Neovim features.
-
-    MOST IMPORTANTLY, we provide a keymap "<space>sh" to [s]earch the [h]elp documentation,
-    which is very useful when you're not exactly sure of what you're looking for.
-
-  I have left several `:help X` comments throughout the init.lua
-    These are hints about where to find more information about the relevant settings,
-    plugins or Neovim features used in Kickstart.
-
-   NOTE: Look for lines like this
-
-    Throughout the file. These are for you, the reader, to help you understand what is happening.
-    Feel free to delete them once you know what you're doing, but they should serve as a guide
-    for when you are first encountering a few different constructs in your Neovim config.
-
-If you experience any errors while trying to install kickstart, run `:checkhealth` for more info.
-
-I hope you enjoy your Neovim journey,
-- TJ
-
-P.S. You can delete this when you're done too. It's your config now! :)
---]]
-
 -- Set <space> as the leader key
 -- See `:help mapleader`
 --  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
@@ -219,6 +133,51 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
 end ---@diagnostic disable-next-line: undefined-field
 vim.opt.rtp:prepend(lazypath)
 
+local function getTelescopeOpts(state, path)
+  return {
+    cwd = path,
+    search_dirs = { path },
+    attach_mappings = function(prompt_bufnr, map)
+      local actions = require 'telescope.actions'
+      actions.select_default:replace(function()
+        actions.close(prompt_bufnr)
+        local action_state = require 'telescope.actions.state'
+        local selection = action_state.get_selected_entry()
+        local filename = selection.filename
+        if filename == nil then
+          filename = selection[1]
+        end
+        -- any way to open the file without triggering auto-close event of neo-tree?
+        require('neo-tree.sources.filesystem').navigate(state, state.path, filename)
+      end)
+      return true
+    end,
+  }
+end
+
+-- Trigger `autoread` when files change on disk for all buffers
+vim.o.autoread = true
+vim.api.nvim_create_autocmd({ 'FocusGained', 'BufEnter', 'CursorHold', 'CursorHoldI' }, {
+  callback = function()
+    if vim.fn.mode() ~= 'c' then
+      for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+        if vim.api.nvim_buf_is_loaded(buf) then
+          vim.api.nvim_buf_call(buf, function()
+            vim.cmd 'checktime'
+          end)
+        end
+      end
+    end
+  end,
+})
+
+-- Notification after file change
+vim.api.nvim_create_autocmd('FileChangedShellPost', {
+  callback = function()
+    vim.cmd 'echohl WarningMsg | echo "File changed on disk. Buffer reloaded." | echohl None'
+  end,
+})
+
 -- [[ Configure and install plugins ]]
 --
 --  To check the current status of your plugins, run
@@ -235,7 +194,55 @@ require('lazy').setup({
   'tpope/vim-sleuth', -- Detect tabstop and shiftwidth automatically
 
   -- Setup fugitive git handling
-  'tpope/vim-fugitive',
+  {
+    'tpope/vim-fugitive',
+    config = function()
+      -- Keybinds
+      vim.keymap.set('n', '<leader>gg', '<cmd>tab Git<CR>', { desc = '[G]it Fu[g]itive' })
+      vim.keymap.set('n', '<leader>gb', '<cmd>Git blame<CR>', { desc = '[G]it [B]lame' })
+    end,
+  },
+
+  -- Setup diff view
+  {
+    'sindrets/diffview.nvim',
+    config = function()
+      -- Keybinds
+      vim.keymap.set('n', '<leader>gd', '<cmd>DiffviewOpen<CR>', { desc = '[G]it [D]iff' })
+    end,
+  },
+
+  {
+    'nvim-treesitter/nvim-treesitter-context',
+    -- event = 'VeryLazy',
+    config = function()
+      require('treesitter-context').setup {
+        max_lines = 3,
+      }
+
+      vim.keymap.set('n', '[c', function()
+        require('treesitter-context').go_to_context(vim.v.count1)
+      end, { silent = true })
+    end,
+  },
+
+  {
+    'nvimdev/lspsaga.nvim',
+    config = function()
+      require('lspsaga').setup {
+        lightbulb = {
+          enable = false,
+        },
+      }
+
+      vim.keymap.set('n', '<leader>cp', '<cmd>Lspsaga peek_definition<CR>', { desc = '[C]ode [P]eek Definition' })
+      vim.keymap.set('n', '<leader>cf', '<cmd>Lspsaga finder<CR>', { desc = '[C]ode [F]inder' })
+    end,
+    dependencies = {
+      'nvim-treesitter/nvim-treesitter', -- optional
+      'nvim-tree/nvim-web-devicons', -- optional
+    },
+  },
 
   -- Rhubarb is extension that enables GBrowse from Fugitive
   'tpope/vim-rhubarb',
@@ -258,14 +265,15 @@ require('lazy').setup({
     config = function()
       require('neo-tree').setup {
         close_if_last_window = true,
+        follow_current_file = {
+          enabled = true,
+          leave_dirs_open = false,
+        },
         sources = {
           'filesystem',
           'buffers',
           'git_status',
           'document_symbols',
-        },
-        mappings = {
-          ['P'] = { 'toggle_preview' },
         },
         source_selector = {
           winbar = true,
@@ -277,14 +285,37 @@ require('lazy').setup({
             { source = 'document_symbols' },
           },
         },
+        commands = {
+          telescope_find = function(state)
+            local node = state.tree:get_node()
+            local path = node:get_id()
+            require('telescope.builtin').find_files(getTelescopeOpts(state, path))
+          end,
+          telescope_grep = function(state)
+            local node = state.tree:get_node()
+            local path = node:get_id()
+            require('telescope.builtin').live_grep(getTelescopeOpts(state, path))
+          end,
+        },
+        mappings = {
+          ['P'] = { 'toggle_preview' },
+        },
+        filesystem = {
+          window = {
+            mappings = {
+              ['tf'] = { 'telescope_find' },
+              ['tg'] = { 'telescope_grep' },
+            },
+          },
+        },
       }
 
       -- Keybinds
       vim.keymap.set('n', '<leader>ef', '<cmd>Neotree<CR>', { desc = 'NeoTree [E]xplore [F]iles' })
       vim.keymap.set('n', '<leader>eg', '<cmd>Neotree git_status<CR>', { desc = 'NeoTree [E]xplore [G]it Status' })
       vim.keymap.set('n', '<leader>eb', '<cmd>Neotree buffers<CR>', { desc = 'NeoTree [E]xplore [B]uffers' })
-      vim.keymap.set('n', '<leader>es', '<cmd>Neotree doument_symbols<CR>', { desc = 'NeoTree [E]xplore Document [S]ymbols' })
-      vim.keymap.set('n', '<leader>er', '<cmd>Neotree reveal<CR>', { desc = 'NeoTree [E]xplore Document [S]ymbols' })
+      vim.keymap.set('n', '<leader>es', '<cmd>Neotree document_symbols<CR>', { desc = 'NeoTree [E]xplore Document [S]ymbols' })
+      vim.keymap.set('n', '<leader>er', '<cmd>Neotree reveal<CR>', { desc = 'NeoTree [E]xplore [R]eveal' })
     end,
   },
 
@@ -351,20 +382,6 @@ require('lazy').setup({
             return s
           end,
         },
-      }
-    end,
-  },
-
-  {
-    'pwntester/octo.nvim',
-    dependencies = {
-      'nvim-lua/plenary.nvim',
-      'nvim-telescope/telescope.nvim',
-      'nvim-tree/nvim-web-devicons',
-    },
-    config = function()
-      require('octo').setup {
-        mappings_disable_default = true,
       }
     end,
   },
@@ -585,8 +602,12 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
       vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
-      vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
-      vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
+      vim.keymap.set('n', '<leader>sb', function()
+        builtin.buffers {
+          sort_mru = true,
+        }
+      end, { desc = '[S]earch Recent [B]uffers' })
+      vim.keymap.set('n', '<leader><leader>', builtin.oldfiles, { desc = '[ ] Find existing buffers' })
 
       -- Slightly advanced example of overriding default behavior and theme
       vim.keymap.set('n', '<leader>/', function()
@@ -613,9 +634,7 @@ require('lazy').setup({
 
       vim.keymap.set('n', '<leader>gf', builtin.git_files, { desc = '[G]it [F]iles' })
       vim.keymap.set('n', '<leader>gc', builtin.git_commits, { desc = '[G]it [C]ommits' })
-      vim.keymap.set('n', '<leader>gb', builtin.git_branches, { desc = '[G]it [B]ranches' })
-      vim.keymap.set('n', '<leader>gs', builtin.git_status, { desc = '[G]it [S]tatus' })
-      vim.keymap.set('n', '<leader>gl', builtin.git_bcommits, { desc = '[G]it File [H]istory' })
+      vim.keymap.set('n', '<leader>gh', builtin.git_bcommits, { desc = '[G]it File [H]istory' })
 
       -- Configure keymap to run tests
       local neotest = require 'neotest'
@@ -819,7 +838,14 @@ require('lazy').setup({
       local servers = {
         -- clangd = {},
         gopls = {},
-        -- pyright = {},
+        pyright = {
+          settings = {
+            python = {
+              -- Forcing a python path using a monorepo
+              pythonPath = '/Users/ajeet/work/sierra/receptive/.venv/bin/python',
+            },
+          },
+        },
         -- rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
@@ -1035,7 +1061,8 @@ require('lazy').setup({
       }
     end,
   },
-
+  'junegunn/seoul256.vim',
+  { 'catppuccin/nvim', name = 'catppuccin', priority = 1000 },
   { -- You can easily change to a different colorscheme.
     -- Change the name of the colorscheme plugin below, and then
     -- change the command in the config to whatever the name of that colorscheme is.
@@ -1047,7 +1074,7 @@ require('lazy').setup({
       -- Load the colorscheme here.
       -- Like many other themes, this one has different styles, and you could load
       -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-night'
+      vim.cmd.colorscheme 'catppuccin-frappe'
 
       -- You can configure highlights by doing something like:
       vim.cmd.hi 'Comment gui=none'
@@ -1118,6 +1145,33 @@ require('lazy').setup({
     --    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
     --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
     --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
+  },
+
+  {
+    'pwntester/octo.nvim',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+      'nvim-telescope/telescope.nvim',
+      'nvim-tree/nvim-web-devicons',
+    },
+    config = function()
+      require('octo').setup {
+        mappings_disable_default = true,
+        mappings = {
+          pull_request = {
+            add_comment = { lhs = '<leader>oa', desc = '[O]cto [A]dd Comment' },
+            open_in_browser = { lhs = '<leader>ou', desc = '[O]cto Open [U]rl' },
+            goto_file = { lhs = '<leader>of', desc = '[O]cto [G]o to file' },
+            next_comment = { lhs = ']c', desc = 'go to next comment' },
+            prev_comment = { lhs = '[c', desc = 'go to previous comment' },
+          },
+          review_thread = {
+            add_comment = { lhs = '<leader>oa', desc = 'add comment' },
+          },
+        },
+        suppress_missing_scope = { projects_v2 = true },
+      }
+    end,
   },
 
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
