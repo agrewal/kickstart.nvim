@@ -236,6 +236,7 @@ require('lazy').setup({
       }
 
       vim.keymap.set('n', '<leader>cp', '<cmd>Lspsaga peek_definition<CR>', { desc = '[C]ode [P]eek Definition' })
+      vim.keymap.set('n', 'gp', '<cmd>Lspsaga peek_definition<CR>', { desc = '[P]eek Definition' })
       vim.keymap.set('n', '<leader>cf', '<cmd>Lspsaga finder<CR>', { desc = '[C]ode [F]inder' })
     end,
     dependencies = {
