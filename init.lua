@@ -235,9 +235,9 @@ require('lazy').setup({
         },
       }
 
-      vim.keymap.set('n', '<leader>cp', '<cmd>Lspsaga peek_definition<CR>', { desc = '[C]ode [P]eek Definition' })
-      vim.keymap.set('n', 'gp', '<cmd>Lspsaga peek_definition<CR>', { desc = '[P]eek Definition' })
-      vim.keymap.set('n', '<leader>cf', '<cmd>Lspsaga finder<CR>', { desc = '[C]ode [F]inder' })
+      vim.keymap.set('n', '<leader>pd', '<cmd>Lspsaga peek_definition<CR>', { desc = '[P]eek [D]efinition' })
+      vim.keymap.set('n', '<leader>pt', '<cmd>Lspsaga peek_type_definition<CR>', { desc = '[P]eek [T]ype Definition' })
+      vim.keymap.set('n', 'gr', '<cmd>Lspsaga finder<CR>', { desc = '[G]oto [R]eferences' })
     end,
     dependencies = {
       'nvim-treesitter/nvim-treesitter', -- optional
@@ -304,8 +304,8 @@ require('lazy').setup({
         filesystem = {
           window = {
             mappings = {
-              ['tf'] = { 'telescope_find' },
-              ['tg'] = { 'telescope_grep' },
+              ['f'] = { 'telescope_find' },
+              ['g'] = { 'telescope_grep' },
             },
           },
         },
@@ -446,6 +446,62 @@ require('lazy').setup({
         changedelete = { text = '~' },
       },
     },
+    config = function()
+      require('gitsigns').setup {
+        on_attach = function(bufnr)
+          local gitsigns = require 'gitsigns'
+
+          local function map(mode, l, r, opts)
+            opts = opts or {}
+            opts.buffer = bufnr
+            vim.keymap.set(mode, l, r, opts)
+          end
+
+          -- Navigation
+          map('n', ']c', function()
+            if vim.wo.diff then
+              vim.cmd.normal { ']c', bang = true }
+            else
+              gitsigns.nav_hunk 'next'
+            end
+          end)
+
+          map('n', '[c', function()
+            if vim.wo.diff then
+              vim.cmd.normal { '[c', bang = true }
+            else
+              gitsigns.nav_hunk 'prev'
+            end
+          end)
+
+          -- Actions
+          map('n', '<leader>hs', gitsigns.stage_hunk)
+          map('n', '<leader>hr', gitsigns.reset_hunk)
+          map('v', '<leader>hs', function()
+            gitsigns.stage_hunk { vim.fn.line '.', vim.fn.line 'v' }
+          end)
+          map('v', '<leader>hr', function()
+            gitsigns.reset_hunk { vim.fn.line '.', vim.fn.line 'v' }
+          end)
+          map('n', '<leader>hS', gitsigns.stage_buffer)
+          map('n', '<leader>hu', gitsigns.undo_stage_hunk)
+          map('n', '<leader>hR', gitsigns.reset_buffer)
+          map('n', '<leader>hp', gitsigns.preview_hunk)
+          map('n', '<leader>hb', function()
+            gitsigns.blame_line { full = true }
+          end)
+          map('n', '<leader>tb', gitsigns.toggle_current_line_blame)
+          map('n', '<leader>hd', gitsigns.diffthis)
+          map('n', '<leader>hD', function()
+            gitsigns.diffthis '~'
+          end)
+          map('n', '<leader>td', gitsigns.toggle_deleted)
+
+          -- Text object
+          map({ 'o', 'x' }, 'ih', ':<C-U>Gitsigns select_hunk<CR>')
+        end,
+      }
+    end,
   },
 
   -- NOTE: Plugins can also be configured to run Lua code when they are loaded.
@@ -748,7 +804,7 @@ require('lazy').setup({
           map('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
 
           -- Find references for the word under your cursor.
-          map('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
+          -- map('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
 
           -- Jump to the implementation of the word under your cursor.
           --  Useful when your language has ways of declaring types without an actual implementation.
@@ -757,7 +813,7 @@ require('lazy').setup({
           -- Jump to the type of the word under your cursor.
           --  Useful when you're not sure what type a variable is and you want to see
           --  the definition of its *type*, not where it was *defined*.
-          map('<leader>D', require('telescope.builtin').lsp_type_definitions, 'Type [D]efinition')
+          map('gt', require('telescope.builtin').lsp_type_definitions, '[G]oto [T]ype Definition')
 
           -- Fuzzy find all the symbols in your current document.
           --  Symbols are things like variables, functions, types, etc.
