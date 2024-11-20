@@ -16,7 +16,7 @@ vim.g.have_nerd_font = true
 vim.opt.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.opt.relativenumber = true
+vim.opt.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.opt.mouse = 'a'
@@ -73,6 +73,13 @@ vim.opt.scrolloff = 10
 
 -- Needed by bufferline
 vim.opt.termguicolors = true
+
+-- wildmode
+vim.o.wildmode = 'longest:list,full'
+
+-- tabs
+vim.opt.tabstop = 4
+vim.opt.shiftwidth = 4
 
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
@@ -155,16 +162,14 @@ local function getTelescopeOpts(state, path)
   }
 end
 
--- Trigger `autoread` when files change on disk for all buffers
+-- Trigger `autoread` when files change on disk for all buffers, including background buffers
 vim.o.autoread = true
 vim.api.nvim_create_autocmd({ 'FocusGained', 'BufEnter', 'CursorHold', 'CursorHoldI' }, {
   callback = function()
     if vim.fn.mode() ~= 'c' then
       for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-        if vim.api.nvim_buf_is_loaded(buf) then
-          vim.api.nvim_buf_call(buf, function()
-            vim.cmd 'checktime'
-          end)
+        if vim.api.nvim_buf_is_loaded(buf) and vim.bo[buf].modifiable then
+          vim.cmd('checktime ' .. buf)
         end
       end
     end
@@ -190,7 +195,34 @@ vim.api.nvim_create_autocmd('FileChangedShellPost', {
 --
 -- NOTE: Here is where you install your plugins.
 require('lazy').setup({
+  -- NOTE: Custom plugins here
+  {
+    'fly',
+    dir = '$HOME/work/fly/nvim',
+    -- dependencies = {},
+    config = function()
+      local fly = require 'fly'
+
+      vim.keymap.set('n', '<leader>gb', fly.select_branch, { desc = '[G]it [B]ranch' })
+    end,
+  },
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
+  {
+    'rcarriga/nvim-notify',
+    config = function()
+      require('notify').setup {
+        render = 'default',
+      }
+      vim.notify = require 'notify'
+    end,
+  },
+  'nextmn/vim-yaml-jinja',
+  {
+    'grapp-dev/nui-components.nvim',
+    dependencies = {
+      'MunifTanjim/nui.nvim',
+    },
+  },
   'tpope/vim-sleuth', -- Detect tabstop and shiftwidth automatically
 
   -- Setup fugitive git handling
@@ -199,7 +231,7 @@ require('lazy').setup({
     config = function()
       -- Keybinds
       vim.keymap.set('n', '<leader>gg', '<cmd>tab Git<CR>', { desc = '[G]it Fu[g]itive' })
-      vim.keymap.set('n', '<leader>gb', '<cmd>Git blame<CR>', { desc = '[G]it [B]lame' })
+      vim.keymap.set('n', '<leader>gl', '<cmd>Git blame<CR>', { desc = '[G]it B[l]ame' })
     end,
   },
 
@@ -207,6 +239,13 @@ require('lazy').setup({
   {
     'sindrets/diffview.nvim',
     config = function()
+      require('diffview').setup {
+        view = {
+          merge_tool = {
+            layout = 'diff3_mixed',
+          },
+        },
+      }
       -- Keybinds
       vim.keymap.set('n', '<leader>gd', '<cmd>DiffviewOpen<CR>', { desc = '[G]it [D]iff' })
     end,
@@ -237,7 +276,12 @@ require('lazy').setup({
 
       vim.keymap.set('n', '<leader>pd', '<cmd>Lspsaga peek_definition<CR>', { desc = '[P]eek [D]efinition' })
       vim.keymap.set('n', '<leader>pt', '<cmd>Lspsaga peek_type_definition<CR>', { desc = '[P]eek [T]ype Definition' })
+      vim.keymap.set('n', '<leader>dd', '<cmd>Lspsaga show_workspace_diagnostics<CR>', { desc = '[D]iagnostic [D]etails' })
+      vim.keymap.set('n', ']D', '<cmd>Lspsaga diagnostic_jump_next<CR>', { desc = '[D]iagnostic [D]etails' })
+      vim.keymap.set('n', '[D', '<cmd>Lspsaga diagnostic_jump_prev<CR>', { desc = '[D]iagnostic [D]etails' })
       vim.keymap.set('n', 'gr', '<cmd>Lspsaga finder<CR>', { desc = '[G]oto [R]eferences' })
+      vim.keymap.set('n', 'gr', '<cmd>Lspsaga finder<CR>', { desc = '[G]oto [R]eferences' })
+      vim.keymap.set('n', '<leader>rn', '<cmd>Lspsaga rename<CR>', { desc = '[R]e[n]ame' })
     end,
     dependencies = {
       'nvim-treesitter/nvim-treesitter', -- optional
@@ -307,6 +351,14 @@ require('lazy').setup({
               ['f'] = { 'telescope_find' },
               ['g'] = { 'telescope_grep' },
             },
+          },
+        },
+        event_handlers = {
+          {
+            event = 'file_open_requested',
+            handler = function()
+              require('neo-tree.command').execute { action = 'close' }
+            end,
           },
         },
       }
@@ -651,9 +703,15 @@ require('lazy').setup({
 
       -- See `:help telescope.builtin`
       local builtin = require 'telescope.builtin'
+      local utils = require 'telescope.utils'
       vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
       vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
       vim.keymap.set('n', '<leader>sf', builtin.find_files, { desc = '[S]earch [F]iles' })
+      vim.keymap.set('n', '<leader>sl', function()
+        builtin.find_files {
+          cwd = utils.buffer_dir(),
+        }
+      end, { desc = '[S]earch [L]ocal Files' })
       vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
       vim.keymap.set('n', '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
       vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
@@ -705,8 +763,11 @@ require('lazy').setup({
         neotest.watch.toggle(vim.fn.expand '%')
       end, { desc = '[T]est Toggle [W]atch File' })
       vim.keymap.set('n', '<leader>to', function()
+        neotest.output.open()
+      end, { desc = '[T]est [O]utput' })
+      vim.keymap.set('n', '<leader>tp', function()
         neotest.output_panel.toggle()
-      end, { desc = '[T]est Toggle [O]utput' })
+      end, { desc = '[T]est Toggle Output [P]anel' })
       vim.keymap.set('n', '<leader>ts', function()
         neotest.summary.toggle()
       end, { desc = '[T]est Toggle [S]ummary' })
@@ -825,7 +886,7 @@ require('lazy').setup({
 
           -- Rename the variable under your cursor.
           --  Most Language Servers support renaming across files, etc.
-          map('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
+          -- map('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
 
           -- Execute a code action, usually your cursor needs to be on top of an error
           -- or a suggestion from your LSP for this to activate.
@@ -895,14 +956,16 @@ require('lazy').setup({
       local servers = {
         -- clangd = {},
         gopls = {},
-        pyright = {
+        basedpyright = {
           settings = {
-            python = {
-              -- Forcing a python path using a monorepo
-              pythonPath = '/Users/ajeet/work/sierra/receptive/.venv/bin/python',
+            basedpyright = {
+              analysis = {
+                typeCheckingMode = 'standard',
+              },
             },
           },
         },
+        -- pyright = {},
         -- rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
@@ -995,7 +1058,7 @@ require('lazy').setup({
       formatters_by_ft = {
         lua = { 'stylua' },
         -- Conform can also run multiple formatters sequentially
-        -- python = { "isort", "black" },
+        python = { 'ruff_format', 'ruff_organize_imports' },
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
         -- javascript = { "prettierd", "prettier", stop_after_first = true },
