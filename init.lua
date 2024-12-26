@@ -211,7 +211,7 @@ require('lazy').setup({
     'rcarriga/nvim-notify',
     config = function()
       require('notify').setup {
-        render = 'default',
+        render = 'wrapped-compact',
       }
       vim.notify = require 'notify'
     end,
@@ -272,6 +272,10 @@ require('lazy').setup({
         lightbulb = {
           enable = false,
         },
+        -- breadcrumbs
+        symbol_in_winbar = {
+          enable = false,
+        },
       }
 
       vim.keymap.set('n', '<leader>pd', '<cmd>Lspsaga peek_definition<CR>', { desc = '[P]eek [D]efinition' })
@@ -297,6 +301,15 @@ require('lazy').setup({
 
   -- Setup Copilot,
   'github/copilot.vim',
+
+  {
+    'ray-x/lsp_signature.nvim',
+    event = 'VeryLazy',
+    opts = {},
+    config = function(_, opts)
+      require('lsp_signature').setup(opts)
+    end,
+  },
 
   -- Setup tree view
   {
@@ -1062,6 +1075,8 @@ require('lazy').setup({
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
         -- javascript = { "prettierd", "prettier", stop_after_first = true },
+        typescript = { 'prettier', stop_after_first = true },
+        typescriptreact = { 'prettier', stop_after_first = true },
       },
     },
   },
