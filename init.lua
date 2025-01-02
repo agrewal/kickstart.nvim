@@ -198,7 +198,7 @@ require('lazy').setup({
   -- NOTE: Custom plugins here
   {
     'fly',
-    dir = '$HOME/work/fly/nvim',
+    dir = os.getenv 'HOME' .. '/work/fly/nvim',
     -- dependencies = {},
     config = function()
       local fly = require 'fly'
@@ -1282,33 +1282,33 @@ require('lazy').setup({
     --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
   },
 
-  {
-    'pwntester/octo.nvim',
-    dependencies = {
-      'nvim-lua/plenary.nvim',
-      'nvim-telescope/telescope.nvim',
-      'nvim-tree/nvim-web-devicons',
-    },
-    config = function()
-      require('octo').setup {
-        mappings_disable_default = true,
-        mappings = {
-          pull_request = {
-            add_comment = { lhs = '<leader>oa', desc = '[O]cto [A]dd Comment' },
-            open_in_browser = { lhs = '<leader>ou', desc = '[O]cto Open [U]rl' },
-            goto_file = { lhs = '<leader>of', desc = '[O]cto [G]o to file' },
-            next_comment = { lhs = ']c', desc = 'go to next comment' },
-            prev_comment = { lhs = '[c', desc = 'go to previous comment' },
-          },
-          review_thread = {
-            add_comment = { lhs = '<leader>oa', desc = 'add comment' },
-          },
-        },
-        suppress_missing_scope = { projects_v2 = true },
-      }
-    end,
-  },
-
+  -- {
+  --   'pwntester/octo.nvim',
+  --   dependencies = {
+  --     'nvim-lua/plenary.nvim',
+  --     'nvim-telescope/telescope.nvim',
+  --     'nvim-tree/nvim-web-devicons',
+  --   },
+  --   config = function()
+  --     require('octo').setup {
+  --       mappings_disable_default = true,
+  --       mappings = {
+  --         pull_request = {
+  --           add_comment = { lhs = '<leader>oa', desc = '[O]cto [A]dd Comment' },
+  --           open_in_browser = { lhs = '<leader>ou', desc = '[O]cto Open [U]rl' },
+  --           goto_file = { lhs = '<leader>of', desc = '[O]cto [G]o to file' },
+  --           next_comment = { lhs = ']c', desc = 'go to next comment' },
+  --           prev_comment = { lhs = '[c', desc = 'go to previous comment' },
+  --         },
+  --         review_thread = {
+  --           add_comment = { lhs = '<leader>oa', desc = 'add comment' },
+  --         },
+  --       },
+  --       suppress_missing_scope = { projects_v2 = true },
+  --     }
+  --   end,
+  -- },
+  --
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
   -- place them in the correct locations.
