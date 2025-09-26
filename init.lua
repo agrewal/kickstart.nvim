@@ -266,6 +266,12 @@ require('lazy').setup({
   },
 
   {
+    'davidmh/mdx.nvim',
+    config = true,
+    dependencies = { 'nvim-treesitter/nvim-treesitter' },
+  },
+
+  {
     'nvimdev/lspsaga.nvim',
     config = function()
       require('lspsaga').setup {
