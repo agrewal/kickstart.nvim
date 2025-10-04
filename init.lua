@@ -35,6 +35,9 @@ end)
 -- Enable break indent
 vim.opt.breakindent = true
 
+-- Always show the status line
+vim.opt.laststatus = 3
+
 -- Save undo history
 vim.opt.undofile = true
 
@@ -196,14 +199,102 @@ vim.api.nvim_create_autocmd('FileChangedShellPost', {
 -- NOTE: Here is where you install your plugins.
 require('lazy').setup({
   -- NOTE: Custom plugins here
+  -- {
+  --   'fly',
+  --   dir = os.getenv 'HOME' .. '/work/fly/nvim',
+  --   -- dependencies = {},
+  --   config = function()
+  --     local fly = require 'fly'
+  --
+  --     vim.keymap.set('n', '<leader>gb', fly.select_branch, { desc = '[G]it [B]ranch' })
+  --   end,
+  -- },
   {
-    'fly',
-    dir = os.getenv 'HOME' .. '/work/fly/nvim',
-    -- dependencies = {},
-    config = function()
-      local fly = require 'fly'
+    'davidmh/mdx.nvim',
+    config = true,
+    dependencies = {
+      'nvim-treesitter/nvim-treesitter',
+    },
+  },
+  {
+    'yetone/avante.nvim',
+    -- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
+    -- ⚠️ must add this setting! ! !
+    build = function()
+      -- conditionally use the correct build system for the current OS
+      if vim.fn.has 'win32' == 1 then
+        return 'powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false'
+      else
+        return 'make'
+      end
+    end,
+    event = 'VeryLazy',
+    version = false, -- Never set this value to "*"! Never!
+    ---@module 'avante'
+    ---@type avante.Config
+    opts = {
+      -- add any opts here
+      -- for example
+      provider = 'claude',
+      providers = {
+        claude = {
+          endpoint = 'https://api.anthropic.com',
+          model = 'claude-sonnet-4-20250514',
+          timeout = 30000, -- Timeout in milliseconds
+          extra_request_body = {
+            temperature = 0.75,
+            max_tokens = 20480,
+          },
+        },
+      },
+    },
+    dependencies = {
+      'nvim-treesitter/nvim-treesitter',
+      'nvim-lua/plenary.nvim',
+      'MunifTanjim/nui.nvim',
+      --- The below dependencies are optional,
+      'echasnovski/mini.pick', -- for file_selector provider mini.pick
+      'nvim-telescope/telescope.nvim', -- for file_selector provider telescope
+      'hrsh7th/nvim-cmp', -- autocompletion for avante commands and mentions
+      'ibhagwan/fzf-lua', -- for file_selector provider fzf
+      'stevearc/dressing.nvim', -- for input provider dressing
+      'folke/snacks.nvim', -- for input provider snacks
+      'nvim-tree/nvim-web-devicons', -- or echasnovski/mini.icons
+      'zbirenbaum/copilot.lua', -- for providers='copilot'
+      {
+        -- support for image pasting
+        'HakonHarnes/img-clip.nvim',
+        event = 'VeryLazy',
+        opts = {
+          -- recommended settings
+          default = {
+            embed_image_as_base64 = false,
+            prompt_for_file_name = false,
+            drag_and_drop = {
+              insert_mode = true,
+            },
+            -- required for Windows users
+            use_absolute_path = true,
+          },
+        },
+      },
+      {
+        -- Make sure to set this up properly if you have lazy=true
+        'MeanderingProgrammer/render-markdown.nvim',
+        opts = {
+          file_types = { 'markdown', 'Avante' },
+        },
+        ft = { 'markdown', 'Avante' },
+      },
+    },
+  },
+  {
+    'claude',
+    dir = os.getenv 'HOME' .. '/work/claude.nvim',
 
-      vim.keymap.set('n', '<leader>gb', fly.select_branch, { desc = '[G]it [B]ranch' })
+    config = function()
+      local claude = require 'claude'
+      claude.setup()
     end,
   },
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
@@ -985,7 +1076,7 @@ require('lazy').setup({
           },
         },
         -- pyright = {},
-        -- rust_analyzer = {},
+        rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
         -- Some languages (like typescript) have entire language plugins that can be useful:
@@ -1007,6 +1098,14 @@ require('lazy').setup({
               -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
               -- diagnostics = { disable = { 'missing-fields' } },
             },
+          },
+        },
+
+        astro = {
+          cmd = { 'astro-ls', '--stdio' },
+          filetypes = { 'astro' },
+          init_options = {
+            typescript = {},
           },
         },
 
@@ -1273,7 +1372,7 @@ require('lazy').setup({
     main = 'nvim-treesitter.configs', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
+      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'astro', 'rust' },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
