@@ -288,15 +288,15 @@ require('lazy').setup({
       },
     },
   },
-  {
-    'claude',
-    dir = os.getenv 'HOME' .. '/work/claude.nvim',
-
-    config = function()
-      local claude = require 'claude'
-      claude.setup()
-    end,
-  },
+  -- {
+  --   'claude',
+  --   dir = os.getenv 'HOME' .. '/work/claude.nvim',
+  --
+  --   config = function()
+  --     local claude = require 'claude'
+  --     claude.setup()
+  --   end,
+  -- },
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
   {
     'rcarriga/nvim-notify',
@@ -626,7 +626,7 @@ require('lazy').setup({
             else
               gitsigns.nav_hunk 'next'
             end
-          end)
+          end, { desc = 'Go to next hunk' })
 
           map('n', '[c', function()
             if vim.wo.diff then
@@ -634,30 +634,30 @@ require('lazy').setup({
             else
               gitsigns.nav_hunk 'prev'
             end
-          end)
+          end, { desc = 'Go to previous hunk' })
 
           -- Actions
-          map('n', '<leader>hs', gitsigns.stage_hunk)
-          map('n', '<leader>hr', gitsigns.reset_hunk)
+          map('n', '<leader>hs', gitsigns.stage_hunk, { desc = '[h]unk [s]tage' })
+          map('n', '<leader>hr', gitsigns.reset_hunk, { desc = '[h]unk [r]eset' })
           map('v', '<leader>hs', function()
             gitsigns.stage_hunk { vim.fn.line '.', vim.fn.line 'v' }
           end)
           map('v', '<leader>hr', function()
             gitsigns.reset_hunk { vim.fn.line '.', vim.fn.line 'v' }
           end)
-          map('n', '<leader>hS', gitsigns.stage_buffer)
-          map('n', '<leader>hu', gitsigns.undo_stage_hunk)
-          map('n', '<leader>hR', gitsigns.reset_buffer)
-          map('n', '<leader>hp', gitsigns.preview_hunk)
+          map('n', '<leader>hS', gitsigns.stage_buffer, { desc = '[h]unk [S]tage Buffer' })
+          map('n', '<leader>hu', gitsigns.undo_stage_hunk, { desc = '[h]unk [u]nstage' })
+          map('n', '<leader>hR', gitsigns.reset_buffer, { desc = '[h]unk [R]eset Buffer' })
+          map('n', '<leader>hp', gitsigns.preview_hunk, { desc = '[h]unk [p]review' })
           map('n', '<leader>hb', function()
             gitsigns.blame_line { full = true }
-          end)
-          map('n', '<leader>tb', gitsigns.toggle_current_line_blame)
-          map('n', '<leader>hd', gitsigns.diffthis)
+          end, { desc = '[h]unk [b]lame' })
+          map('n', '<leader>tb', gitsigns.toggle_current_line_blame, { desc = '[t]oggle [b]lame' })
+          map('n', '<leader>hd', gitsigns.diffthis, { desc = '[h]unk [d]iff' })
           map('n', '<leader>hD', function()
             gitsigns.diffthis '~'
-          end)
-          map('n', '<leader>td', gitsigns.toggle_deleted)
+          end, { desc = '[h]unk [D]iff against ~' })
+          map('n', '<leader>td', gitsigns.toggle_deleted, { desc = '[t]oggle [d]eleted' })
 
           -- Text object
           map({ 'o', 'x' }, 'ih', ':<C-U>Gitsigns select_hunk<CR>')
